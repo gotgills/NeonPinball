@@ -8,9 +8,9 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v4
 
-    - name: Repair Complete Android Project & Physics Engine
+    - name: Generate Complete NeonPinball Source with Advanced Physics & Neon UI
       run: |
         # 1. Root settings.gradle
         cat << 'EOF' > settings.gradle
@@ -35,7 +35,7 @@ jobs:
         # 2. Root build.gradle
         cat << 'EOF' > build.gradle
         plugins {
-            id 'com.android.application' version '8.13.0' apply false
+            id 'com.android.application' version '8.7.3' apply false
         }
         EOF
 
@@ -76,7 +76,7 @@ jobs:
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <application
                 android:allowBackup="true"
-                android:label="NeonPinball"
+                android:label="Neon Pinball"
                 android:supportsRtl="true"
                 android:theme="@style/Theme.AppCompat.NoActionBar">
                 <activity
@@ -108,131 +108,222 @@ jobs:
         }
         EOF
 
-        # 6. PinballView.java Physics Engine
+        # 6. Advanced Pinball Engine with Segment Collision Math & Neon UI
         cat << 'EOF' > app/src/main/java/com/example/neonpinball/PinballView.java
         package com.example.neonpinball;
 
         import android.content.Context;
+        import android.graphics.BlurMaskFilter;
         import android.graphics.Canvas;
         import android.graphics.Color;
         import android.graphics.Paint;
         import android.util.AttributeSet;
         import android.view.MotionEvent;
         import android.view.View;
+        import java.util.ArrayList;
+        import java.util.List;
 
         public class PinballView extends View {
 
-            private static final float GRAVITY = 1500f;
-            private static final int SUB_STEPS = 8;
-            private static final float RESTITUTION = 0.7f;
+            private static final float GRAVITY = 1800f;
+            private static final int SUB_STEPS = 10;
+            private static final float RESTITUTION = 0.72f;
 
             private float ballX = 300f;
             private float ballY = 400f;
-            private float ballVX = 200f;
+            private float ballVX = 250f;
             private float ballVY = 0f;
-            private final float ballRadius = 25f;
+            private final float ballRadius = 24f;
 
-            private float leftFlipperAngle = 0.3f;
-            private float rightFlipperAngle = -0.3f;
+            private float leftFlipperAngle = 0.4f;
+            private float rightFlipperAngle = -0.4f;
             private boolean isLeftFlipping = false;
             private boolean isRightFlipping = false;
 
+            private int score = 0;
             private long lastTime = System.currentTimeMillis();
-            private final Paint paint = new Paint();
+
+            private final Paint ballPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint flipperPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint bumperPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Paint uiPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            private final List<Bumper> bumpers = new ArrayList<>();
+
+            static class Bumper {
+                float x, y, radius;
+                int color;
+                Bumper(float x, float y, float radius, int color) {
+                    this.x = x; this.y = y; this.radius = radius; this.color = color;
+                }
+            }
 
             public PinballView(Context context, AttributeSet attrs) {
                 super(context, attrs);
-                paint.setAntiAlias(true);
+                initPaints();
+            }
+
+            private void initPaints() {
+                ballPaint.setColor(Color.CYAN);
+                ballPaint.setShadowLayer(15f, 0, 0, Color.CYAN);
+
+                flipperPaint.setColor(Color.MAGENTA);
+                flipperPaint.setStrokeWidth(22f);
+                flipperPaint.setStrokeCap(Paint.Cap.ROUND);
+                flipperPaint.setShadowLayer(12f, 0, 0, Color.MAGENTA);
+
+                bumperPaint.setStyle(Paint.Style.FILL);
+                
+                uiPaint.setColor(Color.YELLOW);
+                uiPaint.setTextSize(64f);
+                uiPaint.setFakeBoldText(true);
+                uiPaint.setShadowLayer(10f, 0, 0, Color.YELLOW);
+
+                setLayerType(LAYER_TYPE_SOFTWARE, null);
+            }
+
+            private void setupBumpers(int w, int h) {
+                if (bumpers.isEmpty() && w > 0) {
+                    bumpers.add(new Bumper(w * 0.35f, h * 0.3f, 45f, Color.GREEN));
+                    bumpers.add(new Bumper(w * 0.65f, h * 0.3f, 45f, Color.GREEN));
+                    bumpers.add(new Bumper(w * 0.5f, h * 0.2f, 50f, Color.YELLOW));
+                }
             }
 
             @Override
             protected void onDraw(Canvas canvas) {
                 super.onDraw(canvas);
+                int w = getWidth();
+                int h = getHeight();
+                if (w == 0 || h == 0) return;
+
+                setupBumpers(w, h);
 
                 long now = System.currentTimeMillis();
                 float dt = Math.min((now - lastTime) / 1000f, 0.033f);
                 lastTime = now;
 
-                updatePhysics(dt);
+                updatePhysics(dt, w, h);
 
-                canvas.drawColor(Color.BLACK);
+                canvas.drawColor(Color.parseColor("#0A0A12"));
 
-                paint.setColor(Color.CYAN);
-                canvas.drawCircle(ballX, ballY, ballRadius, paint);
+                // Draw Bumpers
+                for (Bumper b : bumpers) {
+                    bumperPaint.setColor(b.color);
+                    bumperPaint.setShadowLayer(20f, 0, 0, b.color);
+                    canvas.drawCircle(b.x, b.y, b.radius, bumperPaint);
+                }
 
-                paint.setColor(Color.MAGENTA);
-                paint.setStrokeWidth(18f);
+                // Draw Flippers
+                float leftPivotX = w * 0.28f;
+                float leftPivotY = h - 220f;
+                float rightPivotX = w * 0.72f;
+                float rightPivotY = h - 220f;
+                float flipperLength = 170f;
 
-                float leftPivotX = getWidth() * 0.25f;
-                float leftPivotY = getHeight() - 200f;
-                float rightPivotX = getWidth() * 0.75f;
-                float rightPivotY = getHeight() - 200f;
-                float flipperLength = 180f;
+                float lTipX = leftPivotX + (float) Math.cos(leftFlipperAngle) * flipperLength;
+                float lTipY = leftPivotY + (float) Math.sin(leftFlipperAngle) * flipperLength;
+                float rTipX = rightPivotX - (float) Math.cos(rightFlipperAngle) * flipperLength;
+                float rTipY = rightPivotY + (float) Math.sin(rightFlipperAngle) * flipperLength;
 
-                canvas.drawLine(
-                    leftPivotX, leftPivotY,
-                    leftPivotX + (float) Math.cos(leftFlipperAngle) * flipperLength,
-                    leftPivotY + (float) Math.sin(leftFlipperAngle) * flipperLength,
-                    paint
-                );
+                canvas.drawLine(leftPivotX, leftPivotY, lTipX, lTipY, flipperPaint);
+                canvas.drawLine(rightPivotX, rightPivotY, rTipX, rTipY, flipperPaint);
 
-                canvas.drawLine(
-                    rightPivotX, rightPivotY,
-                    rightPivotX - (float) Math.cos(rightFlipperAngle) * flipperLength,
-                    rightPivotY + (float) Math.sin(rightFlipperAngle) * flipperLength,
-                    paint
-                );
+                // Draw Ball
+                canvas.drawCircle(ballX, ballY, ballRadius, ballPaint);
+
+                // Draw HUD
+                canvas.drawText("SCORE: " + score, 40f, 90f, uiPaint);
 
                 invalidate();
             }
 
-            private void updatePhysics(float dt) {
+            private void updatePhysics(float dt, int w, int h) {
                 float subDt = dt / SUB_STEPS;
-                int width = getWidth();
-                int height = getHeight();
-
-                if (width == 0 || height == 0) return;
 
                 for (int step = 0; step < SUB_STEPS; step++) {
                     ballVY += GRAVITY * subDt;
                     ballX += ballVX * subDt;
                     ballY += ballVY * subDt;
 
-                    if (ballX - ballRadius < 0) {
-                        ballX = ballRadius;
-                        ballVX = -ballVX * RESTITUTION;
-                    } else if (ballX + ballRadius > width) {
-                        ballX = width - ballRadius;
-                        ballVX = -ballVX * RESTITUTION;
+                    // Wall Collisions
+                    if (ballX - ballRadius < 0) { ballX = ballRadius; ballVX = -ballVX * RESTITUTION; }
+                    else if (ballX + ballRadius > w) { ballX = w - ballRadius; ballVX = -ballVX * RESTITUTION; }
+
+                    if (ballY - ballRadius < 0) { ballY = ballRadius; ballVY = -ballVY * RESTITUTION; }
+                    else if (ballY + ballRadius > h) {
+                        // Reset Ball
+                        ballX = w * 0.5f; ballY = 200f; ballVX = 200f; ballVY = 0f; score = 0;
                     }
 
-                    if (ballY - ballRadius < 0) {
-                        ballY = ballRadius;
-                        ballVY = -ballVY * RESTITUTION;
-                    } else if (ballY + ballRadius > height) {
-                        ballX = width / 2f;
-                        ballY = 200f;
-                        ballVX = 150f;
-                        ballVY = 0f;
+                    // Bumper Collisions
+                    for (Bumper b : bumpers) {
+                        float dx = ballX - b.x;
+                        float dy = ballY - b.y;
+                        float dist = (float) Math.hypot(dx, dy);
+                        if (dist < ballRadius + b.radius) {
+                            float nx = dx / dist;
+                            float ny = dy / dist;
+                            ballX = b.x + nx * (ballRadius + b.radius);
+                            float speed = (float) Math.hypot(ballVX, ballVY);
+                            float bounceSpeed = Math.max(speed * 1.2f, 900f);
+                            ballVX = nx * bounceSpeed;
+                            ballVY = ny * bounceSpeed;
+                            score += 100;
+                        }
                     }
 
-                    float leftPivotX = width * 0.25f;
-                    float leftPivotY = height - 200f;
-                    if (Math.hypot(ballX - leftPivotX, ballY - leftPivotY) < ballRadius + 100f && isLeftFlipping) {
-                        ballVY = -850f;
-                        ballVX += 200f;
-                    }
+                    // Flipper Segment Collisions
+                    float leftPivotX = w * 0.28f;
+                    float leftPivotY = h - 220f;
+                    float rightPivotX = w * 0.72f;
+                    float rightPivotY = h - 220f;
+                    float flipperLength = 170f;
 
-                    float rightPivotX = width * 0.75f;
-                    float rightPivotY = height - 200f;
-                    if (Math.hypot(ballX - rightPivotX, ballY - rightPivotY) < ballRadius + 100f && isRightFlipping) {
-                        ballVY = -850f;
-                        ballVX -= 200f;
-                    }
+                    collideSegment(leftPivotX, leftPivotY,
+                        leftPivotX + (float) Math.cos(leftFlipperAngle) * flipperLength,
+                        leftPivotY + (float) Math.sin(leftFlipperAngle) * flipperLength,
+                        isLeftFlipping);
+
+                    collideSegment(rightPivotX, rightPivotY,
+                        rightPivotX - (float) Math.cos(rightFlipperAngle) * flipperLength,
+                        rightPivotY + (float) Math.sin(rightFlipperAngle) * flipperLength,
+                        isRightFlipping);
                 }
 
-                leftFlipperAngle += ((isLeftFlipping ? -0.5f : 0.3f) - leftFlipperAngle) * 0.35f;
-                rightFlipperAngle += ((isRightFlipping ? -0.5f : 0.3f) - rightFlipperAngle) * 0.35f;
+                leftFlipperAngle += ((isLeftFlipping ? -0.5f : 0.4f) - leftFlipperAngle) * 0.35f;
+                rightFlipperAngle += ((isRightFlipping ? -0.5f : 0.4f) - rightFlipperAngle) * 0.35f;
+            }
+
+            private void collideSegment(float x1, float y1, float x2, float y2, boolean isFlipping) {
+                float dx = x2 - x1;
+                float dy = y2 - y1;
+                float len = (float) Math.hypot(dx, dy);
+                if (len == 0) return;
+
+                float u = Math.max(0, Math.min(1, ((ballX - x1) * dx + (ballY - y1) * dy) / (len * len)));
+                float nearestX = x1 + u * dx;
+                float nearestY = y1 + u * dy;
+
+                float distX = ballX - nearestX;
+                float distY = ballY - nearestY;
+                float dist = (float) Math.hypot(distX, distY);
+
+                if (dist < ballRadius + 12f) {
+                    float nx = distX / dist;
+                    float ny = distY / dist;
+                    ballX = nearestX + nx * (ballRadius + 12f);
+
+                    float dot = ballVX * nx + ballVY * ny;
+                    if (dot < 0) {
+                        ballVX = (ballVX - 2 * dot * nx) * RESTITUTION;
+                        ballVY = (ballVY - 2 * dot * ny) * RESTITUTION;
+                        if (isFlipping) {
+                            ballVY -= 1000f;
+                            ballVX += nx * 400f;
+                        }
+                    }
+                }
             }
 
             @Override
@@ -261,10 +352,10 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
-        gradle-version: '9.7.1'
+        gradle-version: '8.12'
 
     - name: Build Debug APK
       run: |
-        gradle wrapper --gradle-version 9.7.1
+        gradle wrapper --gradle-version 8.12
         chmod +x gradlew
         ./gradlew assembleDebug --stacktrace
