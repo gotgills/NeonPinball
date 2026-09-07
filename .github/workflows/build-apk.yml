@@ -23,12 +23,105 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Ensure Android Project Files Exist
+        run: |
+          # 1. Ensure settings.gradle exists
+          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+            echo "Creating settings.gradle..."
+            cat << 'EOF' > settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "NeonPinball"
+          include ':app'
+          EOF
+          fi
+
+          # 2. Ensure root build.gradle exists
+          if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
+            echo "Creating root build.gradle..."
+            cat << 'EOF' > build.gradle
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+          }
+          EOF
+          fi
+
+          # 3. Ensure app/build.gradle exists
+          if [ ! -f app/build.gradle ] && [ ! -f app/build.gradle.kts ]; then
+            echo "Creating app/build.gradle..."
+            mkdir -p app
+            cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.example.neonpinball'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.example.neonpinball"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+          fi
+
+          # 4. Ensure minimal AndroidManifest.xml exists
+          if [ ! -f app/src/main/AndroidManifest.xml ]; then
+            echo "Creating AndroidManifest.xml..."
+            mkdir -p app/src/main
+            cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:allowBackup="true"
+                  android:label="NeonPinball"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.AppCompat.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          fi
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.12'
 
-      - name: Generate Wrapper if Missing
+      - name: Generate Wrapper and Fix Permissions
         run: |
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.12
@@ -41,5 +134,5 @@ jobs:
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: NeonPinball-debug
           path: app/build/outputs/apk/debug/*.apk
