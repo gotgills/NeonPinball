@@ -10,9 +10,105 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Inject Working PinballView.java Physics Engine
+    - name: Repair Complete Android Project & Physics Engine
       run: |
+        # 1. Root settings.gradle
+        cat << 'EOF' > settings.gradle
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        rootProject.name = "NeonPinball"
+        include ':app'
+        EOF
+
+        # 2. Root build.gradle
+        cat << 'EOF' > build.gradle
+        plugins {
+            id 'com.android.application' version '8.7.0' apply false
+        }
+        EOF
+
+        # 3. App module build.gradle
+        mkdir -p app
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.example.neonpinball'
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.example.neonpinball"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
+
+        # 4. AndroidManifest.xml
+        mkdir -p app/src/main
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application
+                android:allowBackup="true"
+                android:label="NeonPinball"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AppCompat.NoActionBar">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+        # 5. MainActivity.java
         mkdir -p app/src/main/java/com/example/neonpinball
+        cat << 'EOF' > app/src/main/java/com/example/neonpinball/MainActivity.java
+        package com.example.neonpinball;
+
+        import android.os.Bundle;
+        import androidx.appcompat.app.AppCompatActivity;
+
+        public class MainActivity extends AppCompatActivity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                setContentView(new PinballView(this, null));
+            }
+        }
+        EOF
+
+        # 6. PinballView.java Physics Engine
         cat << 'EOF' > app/src/main/java/com/example/neonpinball/PinballView.java
         package com.example.neonpinball;
 
@@ -156,65 +252,29 @@ jobs:
         }
         EOF
 
-    - name: Patch Root and Module build.gradle Files
-      run: |
-        cat << 'EOF' > build.gradle
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.7.0'
-            }
-        }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
-        EOF
-
-        mkdir -p app
-        cat << 'EOF' > app/build.gradle
-        plugins {
-            id 'com.android.application'
-        }
-
-        android {
-            namespace 'com.example.neonpinball'
-            compileSdk 34
-
-            defaultConfig {
-                applicationId "com.example.neonpinball"
-                minSdk 24
-                targetSdk 34
-                versionCode 1
-                versionName "1.0"
-            }
-
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
-            }
-        }
-
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-        }
-        EOF
-
     - name: Set up JDK 17
-      uses: actions/setup-java@v5
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      uses: actions/setup-java@The provided log shows a GitHub Actions workflow run for building the Android project **NeonPinball** using Gradle. 
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: '8.12'
+### Core Issue
+The workflow run ended with **"Failure"** (exit code 1). However, the specific error text causing the Gradle build failure is not present in the snippet provided. 
 
-    - name: Build Debug APK
-      run: gradle assembleDebug --stacktrace
+The only visible annotations are:
+1. **Warning:** Node.js 20 deprecation warning (`actions/checkout@v4`, `gradle/actions/setup-gradle@v4`). This warning is informational and does **not** cause the build to fail.
+2. **Error Annotation:** `Process completed with exit code 1` (indicates that a step in your job failed).
+
+---
+
+### Step-by-Step Troubleshooting
+
+To identify and fix the actual build failure, follow these steps:
+
+#### 1. Check the Detailed Logs
+* In your GitHub Actions run interface, click on the **build** job on the left sidebar.
+* Expand the step where the exit code 1 occurred (likely the step running `./gradlew assembleDebug`).
+* Scroll up from the bottom of that log section to locate the red error output. Look specifically for lines starting with:
+  ```text
+  > Task :app:compileDebugJavaWithJavac FAILED
+  # OR
+  > Task :app:processDebugResources FAILED
+  # OR
+  * What went wrong:
