@@ -10,7 +10,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Generate Complete NeonPinball Source with Advanced Physics & Neon UI
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.12'
+
+    - name: Repair Complete Android Project & Physics Engine
       run: |
         # 1. Root settings.gradle
         cat << 'EOF' > settings.gradle
@@ -108,12 +119,11 @@ jobs:
         }
         EOF
 
-        # 6. Advanced Pinball Engine with Segment Collision Math & Neon UI
+        # 6. Optimized Physics & Neon Custom View Engine
         cat << 'EOF' > app/src/main/java/com/example/neonpinball/PinballView.java
         package com.example.neonpinball;
 
         import android.content.Context;
-        import android.graphics.BlurMaskFilter;
         import android.graphics.Canvas;
         import android.graphics.Color;
         import android.graphics.Paint;
@@ -165,21 +175,15 @@ jobs:
 
             private void initPaints() {
                 ballPaint.setColor(Color.CYAN);
-                ballPaint.setShadowLayer(15f, 0, 0, Color.CYAN);
-
                 flipperPaint.setColor(Color.MAGENTA);
                 flipperPaint.setStrokeWidth(22f);
                 flipperPaint.setStrokeCap(Paint.Cap.ROUND);
-                flipperPaint.setShadowLayer(12f, 0, 0, Color.MAGENTA);
 
                 bumperPaint.setStyle(Paint.Style.FILL);
-                
+
                 uiPaint.setColor(Color.YELLOW);
                 uiPaint.setTextSize(64f);
                 uiPaint.setFakeBoldText(true);
-                uiPaint.setShadowLayer(10f, 0, 0, Color.YELLOW);
-
-                setLayerType(LAYER_TYPE_SOFTWARE, null);
             }
 
             private void setupBumpers(int w, int h) {
@@ -207,14 +211,11 @@ jobs:
 
                 canvas.drawColor(Color.parseColor("#0A0A12"));
 
-                // Draw Bumpers
                 for (Bumper b : bumpers) {
                     bumperPaint.setColor(b.color);
-                    bumperPaint.setShadowLayer(20f, 0, 0, b.color);
                     canvas.drawCircle(b.x, b.y, b.radius, bumperPaint);
                 }
 
-                // Draw Flippers
                 float leftPivotX = w * 0.28f;
                 float leftPivotY = h - 220f;
                 float rightPivotX = w * 0.72f;
@@ -229,10 +230,7 @@ jobs:
                 canvas.drawLine(leftPivotX, leftPivotY, lTipX, lTipY, flipperPaint);
                 canvas.drawLine(rightPivotX, rightPivotY, rTipX, rTipY, flipperPaint);
 
-                // Draw Ball
                 canvas.drawCircle(ballX, ballY, ballRadius, ballPaint);
-
-                // Draw HUD
                 canvas.drawText("SCORE: " + score, 40f, 90f, uiPaint);
 
                 invalidate();
@@ -246,17 +244,14 @@ jobs:
                     ballX += ballVX * subDt;
                     ballY += ballVY * subDt;
 
-                    // Wall Collisions
                     if (ballX - ballRadius < 0) { ballX = ballRadius; ballVX = -ballVX * RESTITUTION; }
                     else if (ballX + ballRadius > w) { ballX = w - ballRadius; ballVX = -ballVX * RESTITUTION; }
 
                     if (ballY - ballRadius < 0) { ballY = ballRadius; ballVY = -ballVY * RESTITUTION; }
                     else if (ballY + ballRadius > h) {
-                        // Reset Ball
                         ballX = w * 0.5f; ballY = 200f; ballVX = 200f; ballVY = 0f; score = 0;
                     }
 
-                    // Bumper Collisions
                     for (Bumper b : bumpers) {
                         float dx = ballX - b.x;
                         float dy = ballY - b.y;
@@ -273,7 +268,6 @@ jobs:
                         }
                     }
 
-                    // Flipper Segment Collisions
                     float leftPivotX = w * 0.28f;
                     float leftPivotY = h - 220f;
                     float rightPivotX = w * 0.72f;
@@ -292,7 +286,7 @@ jobs:
                 }
 
                 leftFlipperAngle += ((isLeftFlipping ? -0.5f : 0.4f) - leftFlipperAngle) * 0.35f;
-                rightFlipperAngle += ((isRightFlipping ? -0.5f : 0.4f) - rightFlipperAngle) * 0.35f;
+                rightFlipperAngle += ((isRightFlipping ? -0.4f : 0.4f) - rightFlipperAngle) * 0.35f;
             }
 
             private void collideSegment(float x1, float y1, float x2, float y2, boolean isFlipping) {
@@ -343,19 +337,14 @@ jobs:
         }
         EOF
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: '8.12'
-
     - name: Build Debug APK
       run: |
         gradle wrapper --gradle-version 8.12
         chmod +x gradlew
         ./gradlew assembleDebug --stacktrace
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
