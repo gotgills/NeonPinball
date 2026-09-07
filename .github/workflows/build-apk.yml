@@ -5,7 +5,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-    
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,7 +28,14 @@ jobs:
 
       - name: Generate Complete Working Android Project & Code
         run: |
-          # 1. Root settings.gradle
+          # 1. Create gradle.properties (Enables AndroidX & Jetifier)
+          cat << 'EOF' > gradle.properties
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          EOF
+
+          # 2. Root settings.gradle
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -48,14 +55,14 @@ jobs:
           include ':app'
           EOF
 
-          # 2. Root build.gradle
+          # 3. Root build.gradle
           cat << 'EOF' > build.gradle
           plugins {
               id 'com.android.application' version '8.2.2' apply false
           }
           EOF
 
-          # 3. App build.gradle
+          # 4. App build.gradle
           mkdir -p app
           cat << 'EOF' > app/build.gradle
           plugins {
@@ -85,7 +92,7 @@ jobs:
           }
           EOF
 
-          # 4. AndroidManifest.xml
+          # 5. AndroidManifest.xml
           mkdir -p app/src/main
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -107,7 +114,7 @@ jobs:
           </manifest>
           EOF
 
-          # 5. MainActivity.java
+          # 6. MainActivity.java
           mkdir -p app/src/main/java/com/example/neonpinball
           cat << 'EOF' > app/src/main/java/com/example/neonpinball/MainActivity.java
           package com.example.neonpinball;
@@ -124,7 +131,7 @@ jobs:
           }
           EOF
 
-          # 6. Optimized Physics Engine & Custom Pinball View
+          # 7. Pinball View Physics Engine
           cat << 'EOF' > app/src/main/java/com/example/neonpinball/PinballView.java
           package com.example.neonpinball;
 
