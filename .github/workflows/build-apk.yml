@@ -8,7 +8,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Repair Complete Android Project & Physics Engine
       run: |
@@ -22,7 +22,7 @@ jobs:
             }
         }
         dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
             repositories {
                 google()
                 mavenCentral()
@@ -263,7 +263,7 @@ jobs:
       with:
         gradle-version: '8.12'
 
-    - name: Generate Wrapper & Build Debug APK
+    - name: Build Debug APK
       run: |
         gradle wrapper --gradle-version 8.12
         chmod +x gradlew
