@@ -23,10 +23,8 @@ jobs:
       - name: Setup Android SDK & Components
         uses: android-actions/setup-android@v3.2.1
         with:
-          items: platform-tools,platforms;android-34,build-tools;34.0.0
-
-      - name: Accept Android SDK Licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+          accept-android-sdk-licenses: true
 
       - name: Generate Complete Working Android Project & Code
         run: |
