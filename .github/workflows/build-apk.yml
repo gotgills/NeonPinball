@@ -26,10 +26,10 @@ jobs:
       - name: Accept Android SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Ensure Project Structure Exists
+      - name: Generate Complete Android App
         run: |
-          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-            cat << 'EOF' > settings.gradle
+          # 1. Root settings.gradle
+          cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
                   google()
@@ -47,19 +47,17 @@ jobs:
           rootProject.name = "NeonPinball"
           include ':app'
           EOF
-          fi
 
-          if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
-            cat << 'EOF' > build.gradle
+          # 2. Root build.gradle
+          cat << 'EOF' > build.gradle
           plugins {
               id 'com.android.application' version '8.2.2' apply false
           }
           EOF
-          fi
 
-          if [ ! -f app/build.gradle ] && [ ! -f app/build.gradle.kts ]; then
-            mkdir -p app
-            cat << 'EOF' > app/build.gradle
+          # 3. App module build.gradle
+          mkdir -p app
+          cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
           }
@@ -86,11 +84,10 @@ jobs:
               implementation 'androidx.appcompat:appcompat:1.6.1'
           }
           EOF
-          fi
 
-          if [ ! -f app/src/main/AndroidManifest.xml ]; then
-            mkdir -p app/src/main
-            cat << 'EOF' > app/src/main/AndroidManifest.xml
+          # 4. AndroidManifest.xml
+          mkdir -p app/src/main
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
@@ -109,7 +106,22 @@ jobs:
               </application>
           </manifest>
           EOF
-          fi
+
+          # 5. MainActivity.java
+          mkdir -p app/src/main/java/com/example/neonpinball
+          cat << 'EOF' > app/src/main/java/com/example/neonpinball/MainActivity.java
+          package com.example.neonpinball;
+
+          import android.os.Bundle;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -124,7 +136,7 @@ jobs:
           chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --info
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
