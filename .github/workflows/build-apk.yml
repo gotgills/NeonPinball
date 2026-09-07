@@ -156,7 +156,7 @@ jobs:
         }
         EOF
 
-    - name: Patch Root build.gradle for Compatibility
+    - name: Patch Root and Module build.gradle Files
       run: |
         cat << 'EOF' > build.gradle
         buildscript {
@@ -176,8 +176,37 @@ jobs:
         }
         EOF
 
+        mkdir -p app
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.example.neonpinball'
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.example.neonpinball"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
+
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
@@ -188,4 +217,4 @@ jobs:
         gradle-version: '8.12'
 
     - name: Build Debug APK
-      run: gradle assembleDebug --warning-mode=none
+      run: gradle assembleDebug --stacktrace
