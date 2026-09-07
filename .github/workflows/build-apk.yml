@@ -1,9 +1,9 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch: # तपाईं आफैँले क्लिक गरेर चलाउनका लागि
+  workflow_dispatch:
   push:
-    branches: [ main ] # कोड परिवर्तन हुँदा आफैँ चल्नका लागि
+    branches: [ main ]
 
 jobs:
   build:
@@ -17,11 +17,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew || true
-
-      - name: Build APK
-        run: ./gradlew assembleDebug
+      - name: Fix and Build with Gradle
+        run: |
+          # यदि gradlew फाइल छैन भने नयाँ सिर्जना गर्ने
+          if [ ! -f "gradlew" ]; then
+            echo "gradlew not found, generating a new one..."
+            gradle wrapper
+          fi
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
