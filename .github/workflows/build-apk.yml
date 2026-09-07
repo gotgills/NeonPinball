@@ -1,10 +1,6 @@
 name: Build Android APK
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: push
 
 jobs:
   build:
@@ -14,8 +10,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Fix PinballView.java Physics Engine
+    - name: Inject Working PinballView.java Physics Engine
       run: |
+        mkdir -p app/src/main/java/com/example/neonpinball
         cat << 'EOF' > app/src/main/java/com/example/neonpinball/PinballView.java
         package com.example.neonpinball;
 
@@ -155,6 +152,26 @@ jobs:
                         break;
                 }
                 return true;
+            }
+        }
+        EOF
+
+    - name: Patch Root build.gradle for Gradle 9 Compatibility
+      run: |
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.8.0'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
             }
         }
         EOF
