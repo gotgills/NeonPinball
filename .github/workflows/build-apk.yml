@@ -11,20 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      # नयाँ एन्ड्रोइड भर्सनका लागि Java 21 मा अपडेट गरिएको
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # NeonPinball फोल्डर भित्र छिरेर मात्र ग्रेडल सेटअप र बिल्ड गर्ने
+      # नयाँ तथा स्थिर Gradle 8.7 मा अपग्रेड गरेर बिल्ड गर्ने
       - name: Build with Gradle
         run: |
           cd NeonPinball
-          gradle wrapper --gradle-version 8.2
+          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew assembleDebug
 
