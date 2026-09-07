@@ -253,28 +253,15 @@ jobs:
         EOF
 
     - name: Set up JDK 17
-      uses: actions/setup-java@The provided log shows a GitHub Actions workflow run for building the Android project **NeonPinball** using Gradle. 
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-### Core Issue
-The workflow run ended with **"Failure"** (exit code 1). However, the specific error text causing the Gradle build failure is not present in the snippet provided. 
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.12'
 
-The only visible annotations are:
-1. **Warning:** Node.js 20 deprecation warning (`actions/checkout@v4`, `gradle/actions/setup-gradle@v4`). This warning is informational and does **not** cause the build to fail.
-2. **Error Annotation:** `Process completed with exit code 1` (indicates that a step in your job failed).
-
----
-
-### Step-by-Step Troubleshooting
-
-To identify and fix the actual build failure, follow these steps:
-
-#### 1. Check the Detailed Logs
-* In your GitHub Actions run interface, click on the **build** job on the left sidebar.
-* Expand the step where the exit code 1 occurred (likely the step running `./gradlew assembleDebug`).
-* Scroll up from the bottom of that log section to locate the red error output. Look specifically for lines starting with:
-  ```text
-  > Task :app:compileDebugJavaWithJavac FAILED
-  # OR
-  > Task :app:processDebugResources FAILED
-  # OR
-  * What went wrong:
+    - name: Build Debug APK
+      run: gradle assembleDebug --stacktrace
