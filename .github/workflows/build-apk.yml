@@ -23,11 +23,12 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Ensure Android Project Files Exist
+      - name: Accept Android SDK Licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Ensure Project Structure Exists
         run: |
-          # 1. Ensure settings.gradle exists
           if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-            echo "Creating settings.gradle..."
             cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -48,9 +49,7 @@ jobs:
           EOF
           fi
 
-          # 2. Ensure root build.gradle exists
           if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
-            echo "Creating root build.gradle..."
             cat << 'EOF' > build.gradle
           plugins {
               id 'com.android.application' version '8.2.2' apply false
@@ -58,9 +57,7 @@ jobs:
           EOF
           fi
 
-          # 3. Ensure app/build.gradle exists
           if [ ! -f app/build.gradle ] && [ ! -f app/build.gradle.kts ]; then
-            echo "Creating app/build.gradle..."
             mkdir -p app
             cat << 'EOF' > app/build.gradle
           plugins {
@@ -91,9 +88,7 @@ jobs:
           EOF
           fi
 
-          # 4. Ensure minimal AndroidManifest.xml exists
           if [ ! -f app/src/main/AndroidManifest.xml ]; then
-            echo "Creating AndroidManifest.xml..."
             mkdir -p app/src/main
             cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -121,7 +116,7 @@ jobs:
         with:
           gradle-version: '8.12'
 
-      - name: Generate Wrapper and Fix Permissions
+      - name: Make Gradle Wrapper Executable
         run: |
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.12
@@ -129,9 +124,9 @@ jobs:
           chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --info
 
-      - name: Upload Debug APK Artifact
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: NeonPinball-debug
