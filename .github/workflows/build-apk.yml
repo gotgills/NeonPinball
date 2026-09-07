@@ -8,28 +8,30 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v4.7.0
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: 'gradle'
+        # Do NOT include cache: 'gradle' here to avoid 409 Conflict errors
 
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v3.2.1
-
-    - name: Accept Android SDK Licenses
-      run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+      uses: android-actions/setup-android@v3
 
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4.2.2
+      uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: '8.12'
+        cache-disabled: false
 
-    - name: Make Gradle Wrapper Executable
-      run: chmod +x gradlew
+    - name: Make Gradle Wrapper Executable & Ensure Wrapper Exists
+      run: |
+        if [ ! -f gradlew ]; then
+          gradle wrapper --gradle-version 8.12
+        fi
+        chmod +x gradlew
 
     - name: Build Debug APK
       run: ./gradlew assembleDebug --stacktrace
@@ -37,5 +39,5 @@ jobs:
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: NeonPinball-debug
+        name: app-debug
         path: app/build/outputs/apk/debug/*.apk
