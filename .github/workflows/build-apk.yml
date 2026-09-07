@@ -17,13 +17,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # यसले एन्ड्रोइड बिल्डका लागि आवश्यक सबै Gradle इन्स्टल र सेटअप गर्छ
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # नयाँ gradlew फाइल बनाएर सिधै एप बिल्ड गर्ने सुरक्षित कमान्ड
+      # NeonPinball फोल्डर भित्र छिरेर मात्र ग्रेडल सेटअप र बिल्ड गर्ने
       - name: Build with Gradle
         run: |
+          cd NeonPinball
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
           ./gradlew assembleDebug
