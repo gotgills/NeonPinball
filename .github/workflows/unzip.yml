@@ -1,1 +1,21 @@
-
+name: Extract ZIP File
+on:
+  workflow_dispatch:
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip
+        run: |
+          for f in *.zip; do [ -e "$f" ] && unzip -o "$f"; done
+          rm *.zip 
+      - name: Push Files
+        run: |
+          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Unzipped files" || echo "No changes"
+          git push
